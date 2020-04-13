@@ -1,0 +1,1 @@
+alter table shops rename column owner to owner_id;
