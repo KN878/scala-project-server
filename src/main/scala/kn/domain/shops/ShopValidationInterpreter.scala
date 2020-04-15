@@ -15,7 +15,7 @@ class ShopValidationInterpreter[F[_]: Monad](shopRepo: ShopRepositoryAlgebra[F])
     ValidationResult.fromOptionM(shopExists, ShopNotFoundError)
   }
 
-  override def matchOwner(
+  override def ownsShop(
       shopId: Option[Long],
       ownerId: Option[Long],
   ): ValidationResult[ShopValidationError, Unit] = {

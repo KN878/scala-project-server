@@ -16,7 +16,7 @@ class ShopService[F[_]](
   ): EitherT[F, ShopValidationError, Option[Shop]] = {
     val validationRes = for {
       _ <- validation.exists(shopId.some)
-      _ <- validation.matchOwner(shopId.some, ownerId)
+      _ <- validation.ownsShop(shopId.some, ownerId)
     } yield ()
 
     validationRes.semiflatMap(_ => shopRepo.get(shopId).value)
@@ -32,7 +32,7 @@ class ShopService[F[_]](
   ): EitherT[F, ShopValidationError, Option[Shop]] = {
     val validationRes = for {
       _ <- validation.exists(shopId.some)
-      _ <- validation.matchOwner(shopId.some, ownerId)
+      _ <- validation.ownsShop(shopId.some, ownerId)
     } yield ()
 
     validationRes.semiflatMap(_ => shopRepo.delete(shopId).value)
@@ -46,7 +46,7 @@ class ShopService[F[_]](
   ): EitherT[F, ShopValidationError, Option[Shop]] = {
     val validationRes = for {
       _ <- validation.exists(shop.id)
-      _ <- validation.matchOwner(shop.id, ownerId)
+      _ <- validation.ownsShop(shop.id, ownerId)
     } yield ()
 
     validationRes.semiflatMap(_ => shopRepo.update(shop).value)

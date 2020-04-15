@@ -8,7 +8,7 @@ trait ShopValidationAlgebra[F[_]] extends ValidationResultLib[F] {
 
   def doesNotExist(shop: Shop): ValidationResult[ShopValidationError, Unit]
 
-  def matchOwner(
+  def ownsShop(
       shopId: Option[Long],
       ownerId: Option[Long],
   ): ValidationResult[ShopValidationError, Unit]
