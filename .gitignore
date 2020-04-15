@@ -1,2 +1,10 @@
-/.idea/
-/target/
+# IntelliJ
+.idea/
+
+# Scala
+target/
+
+# Other
+.DS_Store
+hidden.conf
+impl/
