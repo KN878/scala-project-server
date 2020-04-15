@@ -1,31 +1,30 @@
 package kn.domain.users
 
-import cats.Applicative
-import cats.data.EitherT
+import cats.Monad
+import cats.data.OptionT
 import cats.implicits._
-import kn.domain.{UserAlreadyExistsError, UserNotFoundError}
 
-class UserValidationInterpreter[F[_]: Applicative](userRepo: UserRepositoryAlgebra[F])
+class UserValidationInterpreter[F[_]: Monad](userRepo: UserRepositoryAlgebra[F])
     extends UserValidationAlgebra[F] {
-  def doesNotExist(user: User): EitherT[F, UserAlreadyExistsError, Unit] =
-    userRepo
-      .findByEmail(user.email)
-      .map(UserAlreadyExistsError)
-      .toLeft(())
+  def doesNotExist(user: User): ValidationResult[UserValidationError, Unit] = {
+    val validationResult = userRepo.findByEmail(user.email).void.value
 
-  def exists(userId: Option[Long]): EitherT[F, UserNotFoundError.type, Unit] =
-    userId match {
+    ValidationResult.ensureM(validationResult.map(_.isEmpty), UserAlreadyExistsError)
+  }
+
+  def exists(userId: Option[Long]): ValidationResult[UserValidationError, Unit] = {
+    val validationResult = userId match {
       case Some(id) =>
-        userRepo
-          .get(id)
-          .toRight(UserNotFoundError)
-          .void
+        userRepo.get(id).void.value
       case None =>
-        EitherT.left[Unit](UserNotFoundError.pure[F])
+        OptionT.none[F, User].void.value
     }
+
+    ValidationResult.fromOptionM(validationResult, UserNotFoundError)
+  }
 }
 
 object UserValidationInterpreter {
-  def apply[F[_]: Applicative](repo: UserRepositoryAlgebra[F]): UserValidationAlgebra[F] =
+  def apply[F[_]: Monad](repo: UserRepositoryAlgebra[F]): UserValidationAlgebra[F] =
     new UserValidationInterpreter[F](repo)
 }

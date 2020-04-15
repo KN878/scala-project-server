@@ -5,22 +5,21 @@ import cats.implicits._
 import io.circe.generic.auto._
 import io.circe.syntax._
 import kn.domain.authentication.Auth
-import kn.domain.balance.ChangeBalanceRequest
 import kn.domain.shops.{Shop, ShopService}
+import kn.domain.transactions.TransactionRequest
 import kn.domain.users.User
-
 import kn.infrastructure.endpoint.Pagination.{OptionalOffsetMatcher, OptionalPageSizeMatcher}
 import kn.infrastructure.infrastructure.AuthEndpoint
-import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
+import org.http4s.{EntityDecoder, HttpRoutes}
 import tsec.authentication._
 import tsec.jwt.algorithms.JWTMacAlgo
 
 class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   implicit val shopDecoder: EntityDecoder[F, Shop] = jsonOf
-  implicit val changeBalanceDecoder: EntityDecoder[F, ChangeBalanceRequest] = jsonOf
+  implicit val changeBalanceDecoder: EntityDecoder[F, TransactionRequest] = jsonOf
 
   private def createShopEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
     case req @ POST -> Root asAuthed _ =>
@@ -84,19 +83,6 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def increaseBalance(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
-    case req @ POST -> Root / "balance" / "increase" asAuthed owner =>
-      val action = for {
-        balanceReq <- req.request.as[ChangeBalanceRequest]
-        user <- shopService.increaseBalance(balanceReq.id, owner.id, balanceReq.amount).value
-      } yield user
-
-      action.flatMap {
-        case Right(changed) => Ok(changed.asJson)
-        case Left(error) => Conflict(error.errorMessage)
-      }
-  }
-
   def endpoints(
       shopService: ShopService[F],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
@@ -109,7 +95,6 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           .orElse(deleteShopEndpoint(shopService))
           .orElse(listShopsEndpoint(shopService))
           .orElse(updateShopEndpoint(shopService))
-          .orElse(increaseBalance(shopService))
       }
     }
 }

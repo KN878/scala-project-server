@@ -5,6 +5,7 @@ import cats.effect.Bracket
 import cats.implicits._
 import doobie._
 import doobie.implicits._
+import doobie.util.compat.FactoryCompat
 import kn.domain.users.{User, UserRepositoryAlgebra}
 import kn.infrastructure.doobie.SQLPagination._
 import tsec.authentication.IdentityStore
@@ -27,7 +28,7 @@ private object UserSQL {
     SELECT FIRST_NAME, LAST_NAME, EMAIL, HASH, PHONE, ID, BALANCE, ROLE
     FROM USERS
     WHERE ID = $userId
-  """.query
+  """.query[User]
 
   def byEmail(email: String): Query0[User] = sql"""
     SELECT FIRST_NAME, LAST_NAME, EMAIL, HASH, PHONE, ID, BALANCE, ROLE
@@ -41,13 +42,16 @@ private object UserSQL {
 
   val selectAll: Query0[User] = sql"""
     SELECT * FROM USERS
-  """.query
+  """.query[User]
 }
 
 class DoobieUserRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Transactor[F])
     extends UserRepositoryAlgebra[F]
     with IdentityStore[F, Long, User] { self =>
   import UserSQL._
+
+  private implicit val listFactoryCompat: FactoryCompat[User, List[User]] =
+    FactoryCompat.fromFactor(List.iterableFactory)
 
   def create(user: User): F[User] =
     insert(user).withUniqueGeneratedKeys[Long]("id").map(id => user.copy(id = id.some)).transact(xa)
@@ -69,7 +73,7 @@ class DoobieUserRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
     findByEmail(email).mapFilter(_.id).flatMap(delete)
 
   def list(pageSize: Int, offset: Int): F[List[User]] =
-    paginate(pageSize, offset)(selectAll).to[List].transact(xa)
+    paginate[User](pageSize, offset)(selectAll.toFragment).to[List].transact(xa)
 
   def increaseBalance(userId: Long, inc: Float): OptionT[F, User] =
     get(userId).flatMap(user => update(user.copy(balance = user.balance + inc)))

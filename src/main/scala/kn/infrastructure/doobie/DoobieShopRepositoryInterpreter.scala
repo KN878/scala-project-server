@@ -5,8 +5,9 @@ import cats.effect.Bracket
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import kn.infrastructure.doobie.SQLPagination._
+import doobie.util.compat.FactoryCompat
 import kn.domain.shops.{Shop, ShopRepositoryAlgebra}
+import kn.infrastructure.doobie.SQLPagination._
 
 private object ShopSQL {
   def insert(shop: Shop): Update0 =
@@ -25,12 +26,12 @@ private object ShopSQL {
     sql"""select * from shops where id = $shopId""".query
 
   def selectByOwnerId(ownerId: Long): Query0[Shop] =
-    sql""" select * from shops where owner_id = $ownerId""".query
+    sql""" select * from shops where owner_id = $ownerId""".query[Shop]
 
   def selectByNameAndAddress(name: String, address: String): Query0[Shop] =
-    sql"select * from shops where name = $name and address = $address".query
+    sql"select * from shops where name = $name and address = $address".query[Shop]
 
-  val selectAll: Query0[Shop] = sql"""select * from shops""".query
+  val selectAll: Query0[Shop] = sql"select * from shops".query[Shop]
 
   def deleteShop(shopId: Long): Update0 = sql"""delete from shops where id = $shopId""".update
 }
@@ -38,6 +39,8 @@ private object ShopSQL {
 class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Transactor[F])
     extends ShopRepositoryAlgebra[F] { self =>
   import ShopSQL._
+  private implicit val listFactoryCompat: FactoryCompat[Shop, List[Shop]] =
+    FactoryCompat.fromFactor(List.iterableFactory)
 
   override def create(shop: Shop): F[Shop] =
     insert(shop).withUniqueGeneratedKeys[Long]("id").map(id => shop.copy(id = id.some)).transact(xa)
@@ -54,13 +57,13 @@ class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
     get(shopId).semiflatMap(shop => deleteShop(shopId).run.transact(xa).as(shop))
 
   override def list(pageSize: Int, offset: Int): F[List[Shop]] =
-    paginate(pageSize, offset)(selectAll).to[List].transact(xa)
+    paginate[Shop](pageSize, offset)(selectAll.toFragment).to[List].transact(xa)
 
   override def increaseBalance(shopId: Long, inc: Float): OptionT[F, Shop] =
     get(shopId).flatMap(shop => update(shop.copy(balance = shop.balance + inc)))
 
   override def getByOwnerId(ownerId: Long, pageSize: Int, offset: Int): F[List[Shop]] =
-    paginate(pageSize, offset)(selectByOwnerId(ownerId)).to[List].transact(xa)
+    paginate[Shop](pageSize, offset)(selectByOwnerId(ownerId).toFragment).to[List].transact(xa)
 
   override def getShopByNameAndAddress(name: String, address: String): OptionT[F, Shop] =
     OptionT(selectByNameAndAddress(name, address).option.transact(xa))

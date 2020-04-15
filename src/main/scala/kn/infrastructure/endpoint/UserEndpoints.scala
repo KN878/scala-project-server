@@ -5,10 +5,8 @@ import cats.effect.Sync
 import cats.implicits._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import kn.domain.{UserAlreadyExistsError, UserAuthenticationFailedError, UserNotFoundError}
 import kn.domain.authentication.{Auth, LoginRequest, SignupRequest}
-import kn.domain.balance.ChangeBalanceRequest
-import kn.domain.users.{User, UserService}
+import kn.domain.users.{User, UserAuthenticationFailedError, UserService}
 import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -27,7 +25,6 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   implicit val loginReqDecoder: EntityDecoder[F, LoginRequest] = jsonOf
 
   implicit val signupReqDecoder: EntityDecoder[F, SignupRequest] = jsonOf
-  implicit val changeBalanceReqDecoder: EntityDecoder[F, ChangeBalanceRequest] = jsonOf
 
   private def loginEndpoint(
       userService: UserService[F],
@@ -41,22 +38,22 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           email = login.email
           user <- userService
             .getUserByEmail(email)
-            .leftMap(_ => UserAuthenticationFailedError(email))
+            .leftMap(_ => UserAuthenticationFailedError)
           checkResult <- EitherT.liftF(
             cryptService.checkpw(login.password, PasswordHash[A](user.hash)),
           )
-          _ <- if (checkResult == Verified) EitherT.rightT[F, UserAuthenticationFailedError](())
-          else EitherT.leftT[F, User](UserAuthenticationFailedError(email))
+          _ <- if (checkResult == Verified)
+            EitherT.rightT[F, UserAuthenticationFailedError.type](())
+          else EitherT.leftT[F, User](UserAuthenticationFailedError)
           token <- user.id match {
             case None => throw new Exception("Impossible") // User is not properly modeled
-            case Some(id) => EitherT.right[UserAuthenticationFailedError](auth.create(id))
+            case Some(id) => EitherT.right[UserAuthenticationFailedError.type](auth.create(id))
           }
         } yield (user, token)
 
         action.value.flatMap {
           case Right((_, token)) => Ok().map(auth.embed(_, token))
-          case Left(UserAuthenticationFailedError(email)) =>
-            BadRequest(s"Authentication failed for user $email")
+          case Left(error) => Conflict(error.errorMessage)
         }
     }
 
@@ -75,8 +72,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
         action.flatMap {
           case Right(saved) => Ok(saved.asJson)
-          case Left(UserAlreadyExistsError(existing)) =>
-            Conflict(s"The user with user name ${existing.email} already exists")
+          case Left(error) => Conflict(error.errorMessage)
         }
     }
 
@@ -90,7 +86,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
       action.flatMap {
         case Right(saved) => Ok(saved.asJson)
-        case Left(UserNotFoundError) => NotFound("User not found")
+        case Left(error) => Conflict(error.errorMessage)
       }
   }
 
@@ -106,7 +102,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
     case GET -> Root / email asAuthed _ =>
       userService.getUserByEmail(email).value.flatMap {
         case Right(found) => Ok(found.asJson)
-        case Left(UserNotFoundError) => NotFound("The user was not found")
+        case Left(error) => Conflict(error.errorMessage)
       }
   }
 
@@ -122,38 +118,12 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
     case GET -> Root / "me" asAuthed user => Ok(user.asJson)
   }
 
-  private def increaseBalance(userService: UserService[F]): AuthEndpoint[F, Auth] = {
-    case req @ POST -> Root / "balance" / "increase" asAuthed _ =>
-      val action = for {
-        balanceReq <- req.request.as[ChangeBalanceRequest]
-        user <- userService.increaseBalance(balanceReq.id, balanceReq.amount).value
-      } yield user
-
-      action.flatMap {
-        case Right(changed) => Ok(changed.asJson)
-        case Left(UserNotFoundError) => NotFound("User not found")
-      }
-  }
-
-  private def decreaseBalance(userService: UserService[F]): AuthEndpoint[F, Auth] = {
-    case req @ POST -> Root / "balance" / "decrease" asAuthed _ =>
-      val action = for {
-        balanceReq <- req.request.as[ChangeBalanceRequest]
-        user <- userService.decreaseBalance(balanceReq.id, balanceReq.amount).value
-      } yield user
-
-      action.flatMap {
-        case Right(changed) => Ok(changed.asJson)
-        case Left(UserNotFoundError) => NotFound("User not found")
-      }
-  }
-
   def endpoints(
       userService: UserService[F],
       cryptService: PasswordHasher[F, A],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
   ): HttpRoutes[F] = {
-    val authEndpoints: AuthService[F, Auth] =
+    val authAdmin: AuthService[F, Auth] =
       Auth.adminOnly {
         updateEndpoint(userService)
           .orElse(listEndpoint(userService))
@@ -161,17 +131,13 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           .orElse(deleteUserEndpoint(userService))
       }
 
-    val balanceEndpoints: AuthService[F, Auth] = Auth.shopOwnerOnly {
-      getMe(userService)
-        .orElse(increaseBalance(userService))
-        .orElse(decreaseBalance(userService))
-    }
+    val authAll: AuthService[F, Auth] = Auth.allRoles(getMe(userService))
 
     val unauthEndpoints =
       loginEndpoint(userService, cryptService, auth.authenticator) <+>
         signupEndpoint(userService, cryptService)
 
-    unauthEndpoints <+> auth.liftService(balanceEndpoints) <+> auth.liftService(authEndpoints)
+    unauthEndpoints <+> auth.liftService(authAdmin) <+> auth.liftService(authAll)
   }
 }
 

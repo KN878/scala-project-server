@@ -1,10 +1,9 @@
 package kn.domain.users
 
-import cats.data.EitherT
-import kn.domain.{UserAlreadyExistsError, UserNotFoundError}
+import kn.utils.validation.ValidationResultLib
 
-trait UserValidationAlgebra[F[_]] {
-  def doesNotExist(user: User): EitherT[F, UserAlreadyExistsError, Unit]
+trait UserValidationAlgebra[F[_]] extends ValidationResultLib[F] {
+  def doesNotExist(user: User): ValidationResult[UserValidationError, Unit]
 
-  def exists(userId: Option[Long]): EitherT[F, UserNotFoundError.type, Unit]
+  def exists(userId: Option[Long]): ValidationResult[UserValidationError, Unit]
 }
