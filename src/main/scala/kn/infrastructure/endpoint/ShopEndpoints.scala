@@ -9,7 +9,7 @@ import kn.domain.shops.{Shop, ShopService}
 import kn.domain.transactions.TransactionRequest
 import kn.domain.users.User
 import kn.infrastructure.endpoint.Pagination.{OptionalOffsetMatcher, OptionalPageSizeMatcher}
-import kn.infrastructure.infrastructure.AuthEndpoint
+import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
@@ -21,7 +21,7 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   implicit val shopDecoder: EntityDecoder[F, Shop] = jsonOf
   implicit val changeBalanceDecoder: EntityDecoder[F, TransactionRequest] = jsonOf
 
-  private def createShopEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def createShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root asAuthed _ =>
       val action = for {
         shop <- req.request.as[Shop]
@@ -35,7 +35,7 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def getShopEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def getShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case GET -> Root / LongVar(id) asAuthed owner =>
       shopService.getShop(id, owner.id).value.flatMap {
         case Right(shop) => Ok(shop.asJson)
@@ -43,16 +43,16 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def getByOwnerIdEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def getByOwnerIdEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case GET -> Root / "owner" / LongVar(ownerId)
           :? OptionalPageSizeMatcher(pageSize) :? OptionalOffsetMatcher(offset) asAuthed _ =>
       for {
-        shops <- shopService.getByOwnerId(ownerId, pageSize.getOrElse(5), offset.getOrElse(5))
+        shops <- shopService.getByOwnerId(ownerId, pageSize.getOrElse(10), offset.getOrElse(0))
         res <- Ok(shops.asJson)
       } yield res
   }
 
-  private def deleteShopEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def deleteShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case DELETE -> Root / LongVar(id) asAuthed owner =>
       shopService.deleteShop(id, owner.id).value.flatMap {
         case Right(_) => Ok()
@@ -61,15 +61,15 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def listShopsEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def listShopsEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case GET -> Root :? OptionalPageSizeMatcher(pageSize) :? OptionalOffsetMatcher(offset) asAuthed _ =>
       for {
-        shops <- shopService.list(pageSize.getOrElse(10), offset.getOrElse(10))
+        shops <- shopService.list(pageSize.getOrElse(10), offset.getOrElse(0))
         res <- Ok(shops.asJson)
       } yield res
   }
 
-  private def updateShopEndpoint(shopService: ShopService[F]): AuthEndpoint[F, Auth] = {
+  private def updateShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root / "update" asAuthed owner =>
       val action = for {
         shop <- req.request.as[Shop]
@@ -86,16 +86,18 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   def endpoints(
       shopService: ShopService[F],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] =
-    auth.liftService {
-      Auth.shopOwnerOnly {
+  ): HttpRoutes[F] = {
+      val authShopOwner: AuthService[Auth, F] = Auth.shopOwnerOnly {
         createShopEndpoint(shopService)
           .orElse(getShopEndpoint(shopService))
           .orElse(getByOwnerIdEndpoint(shopService))
           .orElse(deleteShopEndpoint(shopService))
-          .orElse(listShopsEndpoint(shopService))
           .orElse(updateShopEndpoint(shopService))
       }
+
+      val authed: AuthService[Auth, F] = Auth.allRolesHandler(listShopsEndpoint(shopService))(authShopOwner)
+
+      auth.liftService(authed)
     }
 }
 

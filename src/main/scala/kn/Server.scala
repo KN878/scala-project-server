@@ -10,11 +10,7 @@ import kn.domain.authentication.Auth
 import kn.domain.shops.{ShopService, ShopValidationInterpreter}
 import kn.domain.transactions.{TransactionService, TransactionValidationInterpreter}
 import kn.domain.users.{User, UserService, UserValidationInterpreter}
-import kn.infrastructure.doobie.{
-  DoobieAuthRepositoryInterpreter,
-  DoobieShopRepositoryInterpreter,
-  DoobieUserRepositoryInterpreter,
-}
+import kn.infrastructure.doobie.{DoobieAuthRepositoryInterpreter, DoobieShopRepositoryInterpreter, DoobieUserRepositoryInterpreter}
 import kn.infrastructure.endpoint.{ShopEndpoints, TransactionEndpoint, UserEndpoints}
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder

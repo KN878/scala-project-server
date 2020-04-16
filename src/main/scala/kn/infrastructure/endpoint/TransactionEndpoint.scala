@@ -20,7 +20,7 @@ class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
 
   private def increaseUserBalance(
       transactionService: TransactionService[F],
-  ): AuthEndpoint[F, Auth] = {
+  ): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root / "user" / "increase" asAuthed _ =>
       val action = for {
         balanceReq <- req.request.as[TransactionRequest]
@@ -35,7 +35,7 @@ class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
 
   private def decreaseUserBalance(
       transactionService: TransactionService[F],
-  ): AuthEndpoint[F, Auth] = {
+  ): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root / "user" / "decrease" asAuthed _ =>
       val action = for {
         balanceReq <- req.request.as[TransactionRequest]
@@ -50,7 +50,7 @@ class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
 
   private def transferToShopBalance(
       transactionService: TransactionService[F],
-  ): AuthEndpoint[F, Auth] = {
+  ): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root / "shop" / "increase" asAuthed owner =>
       val action = for {
         balanceReq <- req.request.as[TransactionRequest]
@@ -69,13 +69,15 @@ class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
       transactionService: TransactionService[F],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
   ): HttpRoutes[F] = {
-    val authAll: AuthService[F, Auth] = Auth.allRoles(
-      increaseUserBalance(transactionService).orElse(decreaseUserBalance(transactionService)),
-    )
-    val authShopOwner: AuthService[F, Auth] =
+    val authShopOwner: AuthService[Auth, F] =
       Auth.shopOwnerOnly(transferToShopBalance(transactionService))
 
-    auth.liftService(authAll) <+> auth.liftService(authShopOwner)
+    val authAll: AuthService[Auth, F] = Auth.allRolesHandler(
+      increaseUserBalance(transactionService)
+        .orElse(decreaseUserBalance(transactionService)),
+    )(authShopOwner)
+
+    auth.liftService(authAll)
   }
 }
 

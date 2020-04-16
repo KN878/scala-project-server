@@ -76,7 +76,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
         }
     }
 
-  private def updateEndpoint(userService: UserService[F]): AuthEndpoint[F, Auth] = {
+  private def updateEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
     case req @ PUT -> Root / LongVar(id) asAuthed _ =>
       val action = for {
         user <- req.request.as[User]
@@ -90,7 +90,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def listEndpoint(userService: UserService[F]): AuthEndpoint[F, Auth] = {
+  private def listEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
     case GET -> Root :? OptionalPageSizeMatcher(pageSize) :? OptionalOffsetMatcher(offset) asAuthed _ =>
       for {
         retrieved <- userService.list(pageSize.getOrElse(10), offset.getOrElse(0))
@@ -106,7 +106,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
   }
 
-  private def deleteUserEndpoint(userService: UserService[F]): AuthEndpoint[F, Auth] = {
+  private def deleteUserEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
     case DELETE -> Root / LongVar(id) asAuthed _ =>
       for {
         _ <- userService.deleteUser(id)
@@ -114,7 +114,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       } yield resp
   }
 
-  private def getMe(userService: UserService[F]): AuthEndpoint[F, Auth] = {
+  private def getMe(userService: UserService[F]): AuthEndpoint[Auth, F] = {
     case GET -> Root / "me" asAuthed user => Ok(user.asJson)
   }
 
@@ -123,7 +123,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       cryptService: PasswordHasher[F, A],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
   ): HttpRoutes[F] = {
-    val authAdmin: AuthService[F, Auth] =
+    val authAdmin: AuthService[Auth, F] =
       Auth.adminOnly {
         updateEndpoint(userService)
           .orElse(listEndpoint(userService))
@@ -131,13 +131,14 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           .orElse(deleteUserEndpoint(userService))
       }
 
-    val authAll: AuthService[F, Auth] = Auth.allRoles(getMe(userService))
+    val authed: AuthService[Auth, F] = Auth.allRolesHandler(getMe(userService))(authAdmin)
 
     val unauthEndpoints =
       loginEndpoint(userService, cryptService, auth.authenticator) <+>
         signupEndpoint(userService, cryptService)
 
-    unauthEndpoints <+> auth.liftService(authAdmin) <+> auth.liftService(authAll)
+
+    unauthEndpoints <+> auth.liftService(authed)
   }
 }
 
