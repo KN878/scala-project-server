@@ -12,10 +12,10 @@ import doobie.util.pos.Pos
   */
 trait SQLPagination {
   def limit[A: Read](lim: Int)(q: Query0[A])(implicit pos: Pos): Query0[A] =
-    (Fragment(q.sql, Nil, Some(pos)) ++ fr" limit $lim").query
+    (q.toFragment ++ fr" limit $lim").query
 
-  def paginate[A: Read](lim: Int, offset: Int)(fragment: Fragment)(implicit pos: Pos): Query0[A] =
-    (fragment ++ fr" limit $lim offset $offset").query
+  def paginate[A: Read](lim: Int, offset: Int)(q: Query0[A])(implicit pos: Pos): Query0[A] =
+    (q.toFragment ++ fr" limit $lim offset $offset").query
 }
 
 object SQLPagination extends SQLPagination

@@ -74,7 +74,7 @@ class DoobieUserRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
     findByEmail(email).mapFilter(_.id).flatMap(delete)
 
   def list(pageSize: Int, offset: Int): F[List[User]] =
-    paginate[User](pageSize, offset)(selectAll.toFragment).to[List].transact(xa)
+    paginate(pageSize, offset)(selectAll).to[List].transact(xa)
 
   def increaseBalance(userId: Long, inc: Float): OptionT[F, User] =
     get(userId).flatMap(user => update(user.copy(balance = user.balance + inc)))

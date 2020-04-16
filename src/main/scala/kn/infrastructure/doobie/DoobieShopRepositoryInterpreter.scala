@@ -10,30 +10,44 @@ import kn.domain.shops.{Shop, ShopRepositoryAlgebra}
 import kn.infrastructure.doobie.SQLPagination._
 
 private object ShopSQL {
-  def insert(shop: Shop): Update0 =
-    sql"""insert into shops (id, name, owner_id, balance, address)
-         values (${shop.id}, ${shop.name}, ${shop.ownerId}, ${shop.balance}, ${shop.address})
-         """.update
+  def insert(shop: Shop): Update0 = sql"""
+        insert into shops (name, owner_id, balance, address)
+        values (${shop.name}, ${shop.ownerId}, ${shop.balance}, ${shop.address})
+        """.update
 
-  def update(shop: Shop): Update0 =
-    sql"""update shops
-         set name = ${shop.name}, owner_id = ${shop.ownerId}, balance = ${shop.balance},
-         address = ${shop.address}
-         where id = ${shop.id}
+  def update(shop: Shop): Update0 = sql"""
+        update shops
+        set name = ${shop.name}, owner_id = ${shop.ownerId}, balance = ${shop.balance}, address = ${shop.address}
+        where id = ${shop.id}
        """.update
 
-  def select(shopId: Long): Query0[Shop] =
-    sql"""select * from shops where id = $shopId""".query
+  def select(shopId: Long): Query0[Shop] = sql"""
+        select *
+        from shops
+        where id = $shopId
+        """.query
 
-  def selectByOwnerId(ownerId: Long): Query0[Shop] =
-    sql""" select * from shops where owner_id = $ownerId""".query[Shop]
+  def selectByOwnerId(ownerId: Long): Query0[Shop] = sql"""
+        select *
+        from shops
+        where owner_id = $ownerId
+        """.query[Shop]
 
-  def selectByNameAndAddress(name: String, address: String): Query0[Shop] =
-    sql"select * from shops where name = $name and address = $address".query[Shop]
+  def selectByNameAndAddress(name: String, address: String): Query0[Shop] = sql"""
+        select *
+        from shops
+        where name = $name and address = $address
+        """.query[Shop]
 
-  val selectAll: Query0[Shop] = sql"select * from shops".query[Shop]
+  val selectAll: Query0[Shop] = sql"""
+        select *
+        from shops
+        """.query[Shop]
 
-  def deleteShop(shopId: Long): Update0 = sql"""delete from shops where id = $shopId""".update
+  def deleteShop(shopId: Long): Update0 = sql"""
+        delete from shops
+        where id = $shopId
+        """.update
 }
 
 class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Transactor[F])
@@ -57,13 +71,13 @@ class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
     get(shopId).semiflatMap(shop => deleteShop(shopId).run.transact(xa).as(shop))
 
   override def list(pageSize: Int, offset: Int): F[List[Shop]] =
-    paginate[Shop](pageSize, offset)(selectAll.toFragment).to[List].transact(xa)
+    paginate(pageSize, offset)(selectAll).to[List].transact(xa)
 
   override def increaseBalance(shopId: Long, inc: Float): OptionT[F, Shop] =
     get(shopId).flatMap(shop => update(shop.copy(balance = shop.balance + inc)))
 
   override def getByOwnerId(ownerId: Long, pageSize: Int, offset: Int): F[List[Shop]] =
-    paginate[Shop](pageSize, offset)(selectByOwnerId(ownerId).toFragment).to[List].transact(xa)
+    paginate(pageSize, offset)(selectByOwnerId(ownerId)).to[List].transact(xa)
 
   override def getShopByNameAndAddress(name: String, address: String): OptionT[F, Shop] =
     OptionT(selectByNameAndAddress(name, address).option.transact(xa))
