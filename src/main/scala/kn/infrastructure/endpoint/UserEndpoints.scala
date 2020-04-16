@@ -23,7 +23,7 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   implicit val userDecoder: EntityDecoder[F, User] = jsonOf
   implicit val loginReqDecoder: EntityDecoder[F, LoginRequest] = jsonOf
-
+  implicit val emailReqDecoder: EntityDecoder[F, Email] = jsonOf
   implicit val signupReqDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
   private def loginEndpoint(
@@ -98,9 +98,14 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       } yield resp
   }
 
-  private def searchByEmailEndpoint(userService: UserService[F]): AuthEndpoint[F, Auth] = {
-    case GET -> Root / email asAuthed _ =>
-      userService.getUserByEmail(email).value.flatMap {
+  private def searchByEmailEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
+    case req @ POST -> Root / "byEmail" asAuthed _ =>
+      val foundUser = for {
+        emailReq <- req.request.as[Email]
+        user <- userService.getUserByEmail(emailReq.email).value
+      } yield user
+
+      foundUser.flatMap {
         case Right(found) => Ok(found.asJson)
         case Left(error) => Conflict(error.errorMessage)
       }
@@ -150,3 +155,5 @@ object UserEndpoints {
   ): HttpRoutes[F] =
     new UserEndpoints[F, A, Auth].endpoints(userService, cryptService, auth)
 }
+
+final case class Email(email: String)
