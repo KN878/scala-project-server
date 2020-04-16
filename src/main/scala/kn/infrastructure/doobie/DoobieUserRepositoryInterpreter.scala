@@ -41,7 +41,8 @@ private object UserSQL {
   """.update
 
   val selectAll: Query0[User] = sql"""
-    SELECT * FROM USERS
+    SELECT FIRST_NAME, LAST_NAME, EMAIL, HASH, PHONE, ID, BALANCE, ROLE
+    FROM USERS
   """.query[User]
 }
 
