@@ -2,6 +2,9 @@ package kn.domain.feedback
 
 import java.time.Instant
 
+import io.circe.Encoder
+import io.circe.generic.semiauto.deriveEncoder
+
 case class Feedback(
     id: Option[Long],
     shopId: Long,
@@ -14,7 +17,6 @@ case class Feedback(
 
 case class CreateFeedbackRequest(
     shopId: Long,
-    customerId: Long,
     pros: String,
     cons: String,
     additionalInfo: Option[String],
