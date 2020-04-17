@@ -1,12 +1,14 @@
 package kn.infrastructure.doobie
 
+import java.sql.Timestamp
+import java.time.Instant
+
 import cats.data.OptionT
 import cats.effect.Bracket
 import cats.implicits._
 import doobie._
 import doobie.implicits._
-import doobie.implicits.javatime._
-import doobie.implicits.javasql._
+import doobie.implicits.legacy.instant._
 import doobie.util.compat.FactoryCompat
 import kn.domain.feedback.{Feedback, FeedbackRepositoryAlgebra}
 
