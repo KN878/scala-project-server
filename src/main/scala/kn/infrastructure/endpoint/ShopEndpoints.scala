@@ -5,7 +5,7 @@ import cats.implicits._
 import io.circe.generic.auto._
 import io.circe.syntax._
 import kn.domain.authentication.Auth
-import kn.domain.shops.{Shop, ShopService}
+import kn.domain.shops._
 import kn.domain.transactions.TransactionRequest
 import kn.domain.users.User
 import kn.infrastructure.endpoint.Pagination.{OptionalOffsetMatcher, OptionalPageSizeMatcher}
@@ -19,12 +19,13 @@ import tsec.jwt.algorithms.JWTMacAlgo
 class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   implicit val shopDecoder: EntityDecoder[F, Shop] = jsonOf
+  implicit val createShopReqDecoder: EntityDecoder[F, CreateShopRequest] = jsonOf
   implicit val changeBalanceDecoder: EntityDecoder[F, TransactionRequest] = jsonOf
 
   private def createShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root asAuthed _ =>
       val action = for {
-        shop <- req.request.as[Shop]
+        shop <- req.request.as[CreateShopRequest]
         created <- shopService.createShop(shop).value
       } yield created
 
@@ -105,5 +106,5 @@ object ShopEndpoints {
   def endpoints[F[_]: Sync, A, Auth: JWTMacAlgo](
       shopService: ShopService[F],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ) = new ShopEndpoints[F, A, Auth].endpoints(shopService, auth)
+  ): HttpRoutes[F] = new ShopEndpoints[F, A, Auth].endpoints(shopService, auth)
 }
