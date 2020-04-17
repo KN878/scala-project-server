@@ -11,7 +11,7 @@ import kn.domain.shops.{ShopService, ShopValidationInterpreter}
 import kn.domain.transactions.{TransactionService, TransactionValidationInterpreter}
 import kn.domain.users.{User, UserService, UserValidationInterpreter}
 import kn.infrastructure.doobie.{DoobieAuthRepositoryInterpreter, DoobieShopRepositoryInterpreter, DoobieUserRepositoryInterpreter}
-import kn.infrastructure.endpoint.{ShopEndpoints, TransactionEndpoint, UserEndpoints}
+import kn.infrastructure.endpoint.{ShopEndpoints, TransactionEndpoints, UserEndpoints}
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.{Router, Server => H4Server}
@@ -62,7 +62,7 @@ object Server extends IOApp {
         "/users" -> UserEndpoints
           .endpoints[F, BCrypt, HMACSHA256](userService, BCrypt.syncPasswordHasher[F], routeAuth),
         "/shops" -> ShopEndpoints.endpoints[F, BCrypt, HMACSHA256](shopService, routeAuth),
-        "/balance" -> TransactionEndpoint[F, BCrypt, HMACSHA256](transactionService, routeAuth),
+        "/balance" -> TransactionEndpoints[F, BCrypt, HMACSHA256](transactionService, routeAuth),
       ).orNotFound
       _ <- Resource.liftF(DatabaseConfig.initializeDb(conf.db))
       server <- BlazeServerBuilder[F]

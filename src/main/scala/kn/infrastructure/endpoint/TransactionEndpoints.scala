@@ -14,7 +14,7 @@ import org.http4s.{EntityDecoder, HttpRoutes}
 import tsec.authentication.{AugmentedJWT, SecuredRequestHandler, asAuthed}
 import tsec.jwt.algorithms.JWTMacAlgo
 
-class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
+class TransactionEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   implicit val transactionReqDecoder: EntityDecoder[F, TransactionRequest] = jsonOf
 
@@ -81,9 +81,9 @@ class TransactionEndpoint[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
   }
 }
 
-object TransactionEndpoint {
+object TransactionEndpoints {
   def apply[F[_]: Sync, A, Auth: JWTMacAlgo](
       transactionService: TransactionService[F],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = new TransactionEndpoint[F, A, Auth].endpoints(transactionService, auth)
+  ): HttpRoutes[F] = new TransactionEndpoints[F, A, Auth].endpoints(transactionService, auth)
 }
