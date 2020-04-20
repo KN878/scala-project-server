@@ -6,7 +6,7 @@ import cats.implicits._
 import doobie._
 import doobie.implicits._
 import doobie.util.compat.FactoryCompat
-import kn.domain.users.{User, UserRepositoryAlgebra}
+import kn.domain.users.{User, UserRepository}
 import kn.infrastructure.doobie.SQLPagination._
 import tsec.authentication.IdentityStore
 
@@ -47,7 +47,7 @@ private object UserSQL {
 }
 
 class DoobieUserRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Transactor[F])
-    extends UserRepositoryAlgebra[F]
+    extends UserRepository[F]
     with IdentityStore[F, Long, User] { self =>
   import UserSQL._
 

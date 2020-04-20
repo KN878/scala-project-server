@@ -4,7 +4,7 @@ import cats.Monad
 import cats.data.OptionT
 import cats.implicits._
 
-class UserValidationInterpreter[F[_]: Monad](userRepo: UserRepositoryAlgebra[F])
+class UserValidationInterpreter[F[_]: Monad](userRepo: UserRepository[F])
     extends UserValidationAlgebra[F] {
   def doesNotExist(user: User): ValidationResult[UserValidationError, Unit] = {
     val validationResult = userRepo.findByEmail(user.email).void.value
@@ -25,6 +25,6 @@ class UserValidationInterpreter[F[_]: Monad](userRepo: UserRepositoryAlgebra[F])
 }
 
 object UserValidationInterpreter {
-  def apply[F[_]: Monad](repo: UserRepositoryAlgebra[F]): UserValidationAlgebra[F] =
+  def apply[F[_]: Monad](repo: UserRepository[F]): UserValidationAlgebra[F] =
     new UserValidationInterpreter[F](repo)
 }

@@ -2,7 +2,7 @@ package kn.domain.users
 
 import cats.data.OptionT
 
-trait UserRepositoryAlgebra[F[_]] {
+trait UserRepository[F[_]] {
   def create(user: User): F[User]
 
   def update(user: User): OptionT[F, User]

@@ -2,7 +2,7 @@ package kn.domain.feedback
 
 import cats.data.OptionT
 
-class FeedbackService[F[_]](feedbackRepo: FeedbackRepositoryAlgebra[F]) {
+class FeedbackService[F[_]](feedbackRepo: FeedbackRepository[F]) {
   def create(feedback: Feedback): F[Unit] = feedbackRepo.create(feedback)
 
   def getById(feedbackId: Long): OptionT[F, Feedback] = feedbackRepo.getById(feedbackId)
@@ -17,6 +17,6 @@ class FeedbackService[F[_]](feedbackRepo: FeedbackRepositoryAlgebra[F]) {
 }
 
 object FeedbackService {
-  def apply[F[_]](feedbackRepo: FeedbackRepositoryAlgebra[F]): FeedbackService[F] =
+  def apply[F[_]](feedbackRepo: FeedbackRepository[F]): FeedbackService[F] =
     new FeedbackService[F](feedbackRepo)
 }

@@ -3,12 +3,12 @@ package kn.domain.transactions
 import cats.Monad
 import cats.data.OptionT
 import cats.implicits._
-import kn.domain.shops.{Shop, ShopRepositoryAlgebra}
-import kn.domain.users.{User, UserRepositoryAlgebra}
+import kn.domain.shops.{Shop, ShopRepository}
+import kn.domain.users.{User, UserRepository}
 
 class TransactionValidationInterpreter[F[_]: Monad](
-    shopRepo: ShopRepositoryAlgebra[F],
-    userRepo: UserRepositoryAlgebra[F],
+                                                     shopRepo: ShopRepository[F],
+                                                     userRepo: UserRepository[F],
 ) extends TransactionValidationAlgebra[F] {
   override def ownsTheShop(
       shopId: Option[Long],
@@ -38,8 +38,8 @@ class TransactionValidationInterpreter[F[_]: Monad](
 
 object TransactionValidationInterpreter {
   def apply[F[_]: Monad](
-      shopRepo: ShopRepositoryAlgebra[F],
-      userRepo: UserRepositoryAlgebra[F],
+                          shopRepo: ShopRepository[F],
+                          userRepo: UserRepository[F],
   ): TransactionValidationInterpreter[F] =
     new TransactionValidationInterpreter[F](shopRepo, userRepo)
 }

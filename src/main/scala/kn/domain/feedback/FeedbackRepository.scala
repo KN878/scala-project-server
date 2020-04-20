@@ -2,7 +2,7 @@ package kn.domain.feedback
 
 import cats.data.OptionT
 
-trait FeedbackRepositoryAlgebra[F[_]] {
+trait FeedbackRepository[F[_]] {
   def create(feedback: Feedback): F[Unit]
 
   def getById(feedbackId: Long): OptionT[F, Feedback]

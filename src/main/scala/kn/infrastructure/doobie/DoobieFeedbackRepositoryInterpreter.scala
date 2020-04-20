@@ -10,7 +10,7 @@ import doobie._
 import doobie.implicits._
 import doobie.implicits.legacy.instant._
 import doobie.util.compat.FactoryCompat
-import kn.domain.feedback.{Feedback, FeedbackRepositoryAlgebra}
+import kn.domain.feedback.{Feedback, FeedbackRepository}
 
 private object FeedbackSQL {
   def insert(feedback: Feedback): Update0 =
@@ -49,7 +49,7 @@ private object FeedbackSQL {
 
 class DoobieFeedbackRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](
     val xa: Transactor[F],
-) extends FeedbackRepositoryAlgebra[F] { self =>
+) extends FeedbackRepository[F] { self =>
   import FeedbackSQL._
   import SQLPagination._
 

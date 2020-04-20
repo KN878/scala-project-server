@@ -4,7 +4,7 @@ import cats.data._
 import cats.implicits._
 import cats.{Functor, Monad}
 
-class UserService[F[_]](userRepo: UserRepositoryAlgebra[F], validation: UserValidationAlgebra[F]) {
+class UserService[F[_]](userRepo: UserRepository[F], validation: UserValidationAlgebra[F]) {
   def createUser(user: User)(implicit M: Monad[F]): EitherT[F, UserValidationError, User] = {
     val validationRes = for {
       _ <- validation.doesNotExist(user)
@@ -38,8 +38,8 @@ class UserService[F[_]](userRepo: UserRepositoryAlgebra[F], validation: UserVali
 
 object UserService {
   def apply[F[_]](
-      repository: UserRepositoryAlgebra[F],
-      validation: UserValidationAlgebra[F],
+                   repository: UserRepository[F],
+                   validation: UserValidationAlgebra[F],
   ): UserService[F] =
     new UserService[F](repository, validation)
 }

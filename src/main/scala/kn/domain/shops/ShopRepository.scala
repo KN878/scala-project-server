@@ -2,7 +2,7 @@ package kn.domain.shops
 
 import cats.data.OptionT
 
-trait ShopRepositoryAlgebra[F[_]] {
+trait ShopRepository[F[_]] {
   def create(shop: Shop): F[Shop]
 
   def update(shop: Shop): OptionT[F, Shop]

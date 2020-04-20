@@ -4,7 +4,7 @@ import cats.Monad
 import cats.data.OptionT
 import cats.implicits._
 
-class ShopValidationInterpreter[F[_]: Monad](shopRepo: ShopRepositoryAlgebra[F])
+class ShopValidationInterpreter[F[_]: Monad](shopRepo: ShopRepository[F])
     extends ShopValidationAlgebra[F] {
   override def exists(shopId: Option[Long]): ValidationResult[ShopValidationError, Unit] = {
     val shopExists = shopId match {
@@ -37,6 +37,6 @@ class ShopValidationInterpreter[F[_]: Monad](shopRepo: ShopRepositoryAlgebra[F])
 }
 
 object ShopValidationInterpreter {
-  def apply[F[_]: Monad](shopRepo: ShopRepositoryAlgebra[F]): ShopValidationInterpreter[F] =
+  def apply[F[_]: Monad](shopRepo: ShopRepository[F]): ShopValidationInterpreter[F] =
     new ShopValidationInterpreter[F](shopRepo)
 }

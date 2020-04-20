@@ -3,14 +3,14 @@ package kn.domain.transactions
 import cats.Monad
 import cats.data.EitherT
 import cats.implicits._
-import kn.domain.shops.{Shop, ShopRepositoryAlgebra}
-import kn.domain.users.{User, UserRepositoryAlgebra, UserValidationAlgebra, UserValidationError}
+import kn.domain.shops.{Shop, ShopRepository}
+import kn.domain.users.{User, UserRepository, UserValidationAlgebra, UserValidationError}
 
 class TransactionService[F[_]](
-    shopRepo: ShopRepositoryAlgebra[F],
-    userRepo: UserRepositoryAlgebra[F],
-    transactionValidation: TransactionValidationAlgebra[F],
-    userValidation: UserValidationAlgebra[F],
+                                shopRepo: ShopRepository[F],
+                                userRepo: UserRepository[F],
+                                transactionValidation: TransactionValidationAlgebra[F],
+                                userValidation: UserValidationAlgebra[F],
 ) {
   def increaseUserBalance(userId: Long, inc: Float)(
       implicit M: Monad[F],
@@ -46,10 +46,10 @@ class TransactionService[F[_]](
 
 object TransactionService {
   def apply[F[_]: Monad](
-      shopRepo: ShopRepositoryAlgebra[F],
-      userRepo: UserRepositoryAlgebra[F],
-      transactionValidation: TransactionValidationAlgebra[F],
-      userValidation: UserValidationAlgebra[F],
+                          shopRepo: ShopRepository[F],
+                          userRepo: UserRepository[F],
+                          transactionValidation: TransactionValidationAlgebra[F],
+                          userValidation: UserValidationAlgebra[F],
   ): TransactionService[F] =
     new TransactionService[F](shopRepo, userRepo, transactionValidation, userValidation)
 }

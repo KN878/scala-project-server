@@ -5,8 +5,8 @@ import cats.implicits._
 import cats.{Functor, Monad}
 
 class ShopService[F[_]](
-    shopRepo: ShopRepositoryAlgebra[F],
-    validation: ShopValidationAlgebra[F],
+                         shopRepo: ShopRepository[F],
+                         validation: ShopValidationAlgebra[F],
 ) {
   def createShop(shop: Shop)(implicit M: Monad[F]): EitherT[F, ShopValidationError, Shop] =
     validation.doesNotExist(shop).semiflatMap(_ => shopRepo.create(shop))
@@ -56,8 +56,8 @@ class ShopService[F[_]](
 
 object ShopService {
   def apply[F[_]](
-      shopRepo: ShopRepositoryAlgebra[F],
-      validation: ShopValidationAlgebra[F],
+                   shopRepo: ShopRepository[F],
+                   validation: ShopValidationAlgebra[F],
   ): ShopService[F] =
     new ShopService[F](shopRepo, validation)
 }

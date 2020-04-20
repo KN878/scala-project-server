@@ -6,7 +6,7 @@ import cats.implicits._
 import doobie._
 import doobie.implicits._
 import doobie.util.compat.FactoryCompat
-import kn.domain.shops.{Shop, ShopRepositoryAlgebra}
+import kn.domain.shops.{Shop, ShopRepository}
 import kn.infrastructure.doobie.SQLPagination._
 
 private object ShopSQL {
@@ -51,7 +51,7 @@ private object ShopSQL {
 }
 
 class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Transactor[F])
-    extends ShopRepositoryAlgebra[F] { self =>
+    extends ShopRepository[F] { self =>
   import ShopSQL._
   private implicit val listFactoryCompat: FactoryCompat[Shop, List[Shop]] =
     FactoryCompat.fromFactor(List.iterableFactory)
