@@ -7,12 +7,11 @@ import io.circe.syntax._
 import kn.domain.authentication.Auth
 import kn.domain.shops._
 import kn.domain.transactions.TransactionRequest
-import kn.domain.users.User
 import kn.infrastructure.endpoint.Pagination.{OptionalOffsetMatcher, OptionalPageSizeMatcher}
 import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
+import org.http4s.EntityDecoder
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{EntityDecoder, HttpRoutes}
 import tsec.authentication._
 import tsec.jwt.algorithms.JWTMacAlgo
 
@@ -86,25 +85,21 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   def endpoints(
       shopService: ShopService[F],
-      auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = {
-      val authShopOwner: AuthService[Auth, F] = Auth.shopOwnerOnly {
-        createShopEndpoint(shopService)
-          .orElse(getShopEndpoint(shopService))
-          .orElse(getByOwnerIdEndpoint(shopService))
-          .orElse(deleteShopEndpoint(shopService))
-          .orElse(updateShopEndpoint(shopService))
-      }
-
-      val authed: AuthService[Auth, F] = Auth.allRolesHandler(listShopsEndpoint(shopService))(authShopOwner)
-
-      auth.liftService(authed)
+  ): AuthService[Auth, F] = {
+    val authShopOwner: AuthService[Auth, F] = Auth.shopOwnerOnly {
+      createShopEndpoint(shopService)
+        .orElse(getShopEndpoint(shopService))
+        .orElse(getByOwnerIdEndpoint(shopService))
+        .orElse(deleteShopEndpoint(shopService))
+        .orElse(updateShopEndpoint(shopService))
     }
+
+    Auth.allRolesHandler(listShopsEndpoint(shopService))(authShopOwner)
+  }
 }
 
 object ShopEndpoints {
-  def endpoints[F[_]: Sync, A, Auth: JWTMacAlgo](
+  def apply[F[_]: Sync, A, Auth: JWTMacAlgo](
       shopService: ShopService[F],
-      auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = new ShopEndpoints[F, A, Auth].endpoints(shopService, auth)
+  ): AuthService[Auth, F] = new ShopEndpoints[F, A, Auth].endpoints(shopService)
 }

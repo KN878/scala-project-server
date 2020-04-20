@@ -6,12 +6,11 @@ import io.circe.generic.auto._
 import io.circe.syntax._
 import kn.domain.authentication.Auth
 import kn.domain.transactions.{TransactionRequest, TransactionService}
-import kn.domain.users.User
 import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
+import org.http4s.EntityDecoder
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{EntityDecoder, HttpRoutes}
-import tsec.authentication.{AugmentedJWT, SecuredRequestHandler, asAuthed}
+import tsec.authentication.asAuthed
 import tsec.jwt.algorithms.JWTMacAlgo
 
 class TransactionEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
@@ -67,23 +66,20 @@ class TransactionEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F]
 
   def endpoints(
       transactionService: TransactionService[F],
-      auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = {
+  ): AuthService[Auth, F] = {
     val authShopOwner: AuthService[Auth, F] =
       Auth.shopOwnerOnly(transferToShopBalance(transactionService))
 
-    val authAll: AuthService[Auth, F] = Auth.allRolesHandler(
+    Auth.allRolesHandler(
       increaseUserBalance(transactionService)
         .orElse(decreaseUserBalance(transactionService)),
     )(authShopOwner)
 
-    auth.liftService(authAll)
   }
 }
 
 object TransactionEndpoints {
   def apply[F[_]: Sync, A, Auth: JWTMacAlgo](
       transactionService: TransactionService[F],
-      auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = new TransactionEndpoints[F, A, Auth].endpoints(transactionService, auth)
+  ): AuthService[Auth, F] = new TransactionEndpoints[F, A, Auth].endpoints(transactionService)
 }
