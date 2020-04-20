@@ -24,13 +24,4 @@ trait ValidationResultLib[M[_]] {
     def fromOptionM[F, S](opt: M[Option[S]], ifNone: => F)(implicit m: Monad[M]): ValidationResult[F, S] =
       EitherT.fromOptionF(opt, ifNone)
   }
-
-  implicit class ValidationResultOps[F, S](vr: ValidationResult[F, S]) {
-
-    def onSuccess[S2](s2: => M[S2])(implicit m: Monad[M]): EitherT[M, F, S2] =
-      vr.onSuccess(_ => s2)
-
-    def onSuccess[S2](fn: S => M[S2])(implicit m: Monad[M]): EitherT[M, F, S2] =
-      vr.semiflatMap(fn)
-  }
 }
