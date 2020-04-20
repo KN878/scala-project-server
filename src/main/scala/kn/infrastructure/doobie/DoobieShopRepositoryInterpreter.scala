@@ -84,6 +84,6 @@ class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
 }
 
 object DoobieShopRepositoryInterpreter {
-  def apply[F[_]: Bracket[*[_], Throwable]](xa: Transactor[F]): DoobieShopRepositoryInterpreter[F] =
+  def apply[F[_]: Bracket[*[_], Throwable]](xa: Transactor[F]): ShopRepository[F] =
     new DoobieShopRepositoryInterpreter[F](xa)
 }
