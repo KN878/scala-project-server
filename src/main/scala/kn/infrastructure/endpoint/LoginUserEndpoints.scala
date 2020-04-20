@@ -5,9 +5,8 @@ import cats.effect.Sync
 import cats.implicits._
 import io.circe.generic.auto._
 import io.circe.syntax._
-import kn.domain.authentication.{Auth, LoginRequest, SignupRequest}
+import kn.domain.authentication.{LoginRequest, SignupRequest}
 import kn.domain.users.{User, UserAuthenticationFailedError, UserService}
-import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
@@ -16,9 +15,7 @@ import tsec.common.Verified
 import tsec.jwt.algorithms.JWTMacAlgo
 import tsec.passwordhashers.{PasswordHash, PasswordHasher}
 
-class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
-  import Pagination._
-
+class LoginUserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   /* Jsonization of our User type */
 
   implicit val userDecoder: EntityDecoder[F, User] = jsonOf
@@ -76,84 +73,23 @@ class UserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
         }
     }
 
-  private def updateEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
-    case req @ PUT -> Root / LongVar(id) asAuthed _ =>
-      val action = for {
-        user <- req.request.as[User]
-        updated = user.copy(id = id.some)
-        result <- userService.update(updated).value
-      } yield result
-
-      action.flatMap {
-        case Right(saved) => Ok(saved.asJson)
-        case Left(error) => Conflict(error.errorMessage)
-      }
-  }
-
-  private def listEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
-    case GET -> Root :? OptionalPageSizeMatcher(pageSize) :? OptionalOffsetMatcher(offset) asAuthed _ =>
-      for {
-        retrieved <- userService.list(pageSize.getOrElse(10), offset.getOrElse(0))
-        resp <- Ok(retrieved.asJson)
-      } yield resp
-  }
-
-  private def searchByEmailEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
-    case req @ POST -> Root / "byEmail" asAuthed _ =>
-      val foundUser = for {
-        emailReq <- req.request.as[Email]
-        user <- userService.getUserByEmail(emailReq.email).value
-      } yield user
-
-      foundUser.flatMap {
-        case Right(found) => Ok(found.asJson)
-        case Left(error) => Conflict(error.errorMessage)
-      }
-  }
-
-  private def deleteUserEndpoint(userService: UserService[F]): AuthEndpoint[Auth, F] = {
-    case DELETE -> Root / LongVar(id) asAuthed _ =>
-      for {
-        _ <- userService.deleteUser(id)
-        resp <- Ok()
-      } yield resp
-  }
-
-  private def getMe(userService: UserService[F]): AuthEndpoint[Auth, F] = {
-    case GET -> Root / "me" asAuthed user => Ok(user.asJson)
-  }
-
   def endpoints(
       userService: UserService[F],
       cryptService: PasswordHasher[F, A],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
-  ): HttpRoutes[F] = {
-    val authAdmin: AuthService[Auth, F] =
-      Auth.adminOnly {
-        updateEndpoint(userService)
-          .orElse(listEndpoint(userService))
-          .orElse(searchByEmailEndpoint(userService))
-          .orElse(deleteUserEndpoint(userService))
-      }
+  ): HttpRoutes[F] =
+    loginEndpoint(userService, cryptService, auth.authenticator) <+> signupEndpoint(
+      userService,
+      cryptService,
+    )
 
-    val authed: AuthService[Auth, F] = Auth.allRolesHandler(getMe(userService))(authAdmin)
-
-    val unauthEndpoints =
-      loginEndpoint(userService, cryptService, auth.authenticator) <+>
-        signupEndpoint(userService, cryptService)
-
-
-    unauthEndpoints <+> auth.liftService(authed)
-  }
 }
 
-object UserEndpoints {
-  def endpoints[F[_]: Sync, A, Auth: JWTMacAlgo](
+object LoginUserEndpoints {
+  def apply[F[_]: Sync, A, Auth: JWTMacAlgo](
       userService: UserService[F],
       cryptService: PasswordHasher[F, A],
       auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]],
   ): HttpRoutes[F] =
-    new UserEndpoints[F, A, Auth].endpoints(userService, cryptService, auth)
+    new LoginUserEndpoints[F, A, Auth].endpoints(userService, cryptService, auth)
 }
-
-final case class Email(email: String)
