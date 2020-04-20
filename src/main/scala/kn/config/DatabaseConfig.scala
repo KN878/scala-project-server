@@ -3,6 +3,8 @@ package kn.config
 import cats.syntax.functor._
 import cats.effect.{Async, Blocker, ContextShift, Resource, Sync}
 import doobie.hikari.HikariTransactor
+import io.circe.Decoder
+import io.circe.generic.semiauto.deriveDecoder
 import org.flywaydb.core.Flyway
 
 import scala.concurrent.ExecutionContext
@@ -15,6 +17,8 @@ case class DatabaseConfig(
 )
 
 object DatabaseConfig {
+  implicit val dbDec: Decoder[DatabaseConfig] = deriveDecoder
+
   def dbTransactor[F[_]: Async: ContextShift](
       dbc: DatabaseConfig,
       connEc: ExecutionContext,
