@@ -5,6 +5,7 @@ Developed following Domain Driven Design principles and based on the Scala Pet S
 
 
 <h3>Main functionalities are:</h3>
+
 * Three types of users: customer, shop owner and admin
 * User authentication and authorization with TSEC
 * Shop owners can create shops, update and delete their shops
