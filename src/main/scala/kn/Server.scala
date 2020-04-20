@@ -65,12 +65,13 @@ object Server extends IOApp {
       feedbackRepo = DoobieFeedbackRepositoryInterpreter[F](xa)
       routeAuth <- authenticator[F](xa, userRepo)
       httpApp = Router(
-        "/users" -> LoginUserEndpoints[F, BCrypt, HMACSHA256](
-          userService,
-          BCrypt.syncPasswordHasher[F],
-          routeAuth,
-        ),
-        "/users" -> routeAuth.liftService(AuthedUserEndpoints[F, BCrypt, HMACSHA256](userService)),
+        "/users" -> {
+          LoginUserEndpoints[F, BCrypt, HMACSHA256](
+            userService,
+            BCrypt.syncPasswordHasher[F],
+            routeAuth,
+          ) <+> routeAuth.liftService(AuthedUserEndpoints[F, BCrypt, HMACSHA256](userService))
+        },
         "/shops" -> routeAuth.liftService(ShopEndpoints[F, BCrypt, HMACSHA256](shopService)),
         "/balance" -> routeAuth.liftService(
           TransactionEndpoints[F, BCrypt, HMACSHA256](transactionService),
