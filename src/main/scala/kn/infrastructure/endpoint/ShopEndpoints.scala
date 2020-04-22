@@ -29,15 +29,15 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       } yield created
 
       action.flatMap {
-        case Right(created) => Ok(created.asJson)
+        case Right(created) => Created(created.asJson)
         case Left(error) =>
           Conflict(error.errorMessage)
       }
   }
 
   private def getShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
-    case GET -> Root / LongVar(id) asAuthed owner =>
-      shopService.getShop(id, owner.id).value.flatMap {
+    case GET -> Root / LongVar(id) asAuthed _ =>
+      shopService.getShop(id).value.flatMap {
         case Right(shop) => Ok(shop.asJson)
         case Left(error) => NotFound(error.errorMessage)
       }
@@ -70,7 +70,7 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   }
 
   private def updateShopEndpoint(shopService: ShopService[F]): AuthEndpoint[Auth, F] = {
-    case req @ POST -> Root / "update" asAuthed owner =>
+    case req @ PUT -> Root / "update" asAuthed owner =>
       val action = for {
         shop <- req.request.as[Shop]
         updated <- shopService.update(shop, owner.id).value
@@ -88,13 +88,13 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   ): AuthService[Auth, F] = {
     val authShopOwner: AuthService[Auth, F] = Auth.shopOwnerOnly {
       createShopEndpoint(shopService)
-        .orElse(getShopEndpoint(shopService))
         .orElse(getByOwnerIdEndpoint(shopService))
         .orElse(deleteShopEndpoint(shopService))
         .orElse(updateShopEndpoint(shopService))
     }
 
-    Auth.allRolesHandler(listShopsEndpoint(shopService))(authShopOwner)
+    Auth.allRolesHandler(listShopsEndpoint(shopService)
+      .orElse(getShopEndpoint(shopService)))(authShopOwner)
   }
 }
 
