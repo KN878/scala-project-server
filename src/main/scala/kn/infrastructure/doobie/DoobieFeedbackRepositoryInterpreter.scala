@@ -10,10 +10,10 @@ import doobie._
 import doobie.implicits._
 import doobie.implicits.legacy.instant._
 import doobie.util.compat.FactoryCompat
-import kn.domain.feedback.{Feedback, FeedbackRepository}
+import kn.domain.feedback.{Feedback, FeedbackWithIds, FeedbackRepository}
 
 private object FeedbackSQL {
-  def insert(feedback: Feedback): Update0 =
+  def insert(feedback: FeedbackWithIds): Update0 =
     sql"""insert into feedback (shop_id, customer_id, type, pros, cons, additional_info, date)
          values (${feedback.shopId}, ${feedback.customerId}, 'feedback', ${feedback.pros}, ${feedback.cons},
          ${feedback.additionalInfo}, ${feedback.date})
@@ -21,23 +21,29 @@ private object FeedbackSQL {
 
   def get(feedbackId: Long): Query0[Feedback] =
     sql"""
-      select id, shop_id, customer_id, pros, cons, additional_info, date
-      from feedback
-      where id = $feedbackId
+      select feedback.id, shops.name, users.email, pros, cons, additional_info, date
+      from ((feedback
+      inner join shops on feedback.shop_id = shops.id)
+      inner join users on feedback.customer_id = users.id)
+      where feedback.id = $feedbackId
        """.query[Feedback]
 
   def getByShopId(shopId: Long): Query0[Feedback] =
     sql"""
-      select id, shop_id, customer_id, pros, cons, additional_info, date
-      from feedback
-      where shop_id = $shopId
+      select feedback.id, shops.name, users.email, pros, cons, additional_info, date
+      from ((feedback
+      inner join shops on feedback.shop_id = shops.id)
+      inner join users on feedback.customer_id = users.id)
+      where shops.id = $shopId
        """.query[Feedback]
 
   def getByCustomerId(customerId: Long): Query0[Feedback] =
     sql"""
-      select id, shop_id, customer_id, pros, cons, additional_info, date
-      from feedback
-      where customer_id = $customerId
+      select feedback.id, shops.name, users.email, pros, cons, additional_info, date
+      from ((feedback
+      inner join shops on feedback.shop_id = shops.id)
+      inner join users on feedback.customer_id = users.id)
+      where users.id = $customerId
        """.query[Feedback]
 
   def delete(feedbackId: Long): Update0 =
@@ -53,10 +59,10 @@ class DoobieFeedbackRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](
   import FeedbackSQL._
   import SQLPagination._
 
-  implicit val ListFactory: FactoryCompat[Feedback, List[Feedback]] =
+  implicit val ListFactory: FactoryCompat[FeedbackWithIds, List[FeedbackWithIds]] =
     FactoryCompat.fromFactor(List.iterableFactory)
 
-  override def create(feedback: Feedback): F[Unit] =
+  override def create(feedback: FeedbackWithIds): F[Unit] =
     insert(feedback)
       .withUniqueGeneratedKeys[Long]("id")
       .map(id => feedback.copy(id = id.some)) // setting feedback id

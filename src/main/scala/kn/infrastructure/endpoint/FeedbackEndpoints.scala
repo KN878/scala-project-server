@@ -8,7 +8,7 @@ import io.circe.Encoder
 import io.circe.generic.auto._
 import io.circe.syntax._
 import kn.domain.authentication.Auth
-import kn.domain.feedback.{CreateFeedbackRequest, Feedback, _}
+import kn.domain.feedback._
 import kn.infrastructure.endpoint.Pagination.{OptionalOffsetMatcher, OptionalPageSizeMatcher}
 import kn.infrastructure.infrastructure.{AuthEndpoint, AuthService}
 import org.http4s.EntityDecoder
@@ -21,7 +21,7 @@ class FeedbackEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   implicit val createFeedbackReqDecoder: EntityDecoder[F, CreateFeedbackRequest] = jsonOf
   implicit val feedbackDecoder: EntityDecoder[F, Feedback] = jsonOf
   implicit val instantEncoder: Encoder[Instant] =
-    Encoder.encodeString.contramap[Instant](_.atZone(ZoneId.of("Europe/Moscow")).toString)
+    Encoder.encodeString.contramap[Instant](_.atZone(ZoneId.of("Europe/London")).toString)
 
   private def createFeedbackEndpoint(feedbackRepo: FeedbackRepository[F]): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root asAuthed user =>
