@@ -11,12 +11,11 @@ class ShopService[F[_]](
   def createShop(shop: Shop)(implicit M: Monad[F]): EitherT[F, ShopValidationError, Shop] =
     validation.doesNotExist(shop).semiflatMap(_ => shopRepo.create(shop))
 
-  def getShop(shopId: Long, ownerId: Option[Long])(
+  def getShop(shopId: Long)(
       implicit M: Monad[F],
   ): EitherT[F, ShopValidationError, Option[Shop]] = {
     val validationRes = for {
       _ <- validation.exists(shopId.some)
-      _ <- validation.ownsShop(shopId.some, ownerId)
     } yield ()
 
     validationRes.semiflatMap(_ => shopRepo.get(shopId).value)
