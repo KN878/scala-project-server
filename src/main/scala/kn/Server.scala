@@ -83,7 +83,6 @@ object Server extends TaskApp {
     } yield server
 
   def run(args: List[String]): Task[ExitCode] = {
-
     createServer[Task].use(_ => Task.never).as(ExitCode.Success)
   }
 }
