@@ -1,5 +1,6 @@
 package kn
 
+import cats.Applicative
 import cats.effect._
 import cats.implicits._
 import doobie.hikari.HikariTransactor
@@ -10,13 +11,9 @@ import kn.domain.authentication.Auth
 import kn.domain.shops.{ShopService, ShopValidationInterpreter}
 import kn.domain.transactions.{TransactionService, TransactionValidationInterpreter}
 import kn.domain.users.{User, UserService, UserValidationInterpreter}
-import kn.infrastructure.doobie.{
-  DoobieAuthRepositoryInterpreter,
-  DoobieFeedbackRepositoryInterpreter,
-  DoobieShopRepositoryInterpreter,
-  DoobieUserRepositoryInterpreter,
-}
+import kn.infrastructure.doobie.{DoobieAuthRepositoryInterpreter, DoobieFeedbackRepositoryInterpreter, DoobieShopRepositoryInterpreter, DoobieUserRepositoryInterpreter}
 import kn.infrastructure.endpoint._
+import monix.eval.{Task, TaskApp}
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.{Router, Server => H4Server}
@@ -24,14 +21,14 @@ import tsec.authentication.{AugmentedJWT, IdentityStore, SecuredRequestHandler}
 import tsec.mac.jca.HMACSHA256
 import tsec.passwordhashers.jca.BCrypt
 
-object Server extends IOApp {
+object Server extends TaskApp {
   def transactor[F[_]: Async: ContextShift](
       config: MobileServerConfig,
   ): Resource[F, HikariTransactor[F]] =
     for {
       connEc <- ExecutionContexts.cachedThreadPool[F]
       txnEc <- ExecutionContexts.cachedThreadPool[F]
-      xa <- DatabaseConfig.dbTransactor(config.db, connEc, Blocker.liftExecutionContext(txnEc))
+      xa <- DatabaseConfig.dbTransactor[F](config.db, connEc, Blocker.liftExecutionContext(txnEc))
     } yield xa
 
   def authenticator[F[_]: Sync: ContextShift](
@@ -48,7 +45,7 @@ object Server extends IOApp {
   def createServer[F[_]: ContextShift: ConcurrentEffect: Timer]: Resource[F, H4Server[F]] =
     for {
       conf <- Resource.liftF(parser.decodePathF[F, MobileServerConfig]("mobileServer"))
-      xa <- transactor(conf)
+      xa <- transactor[F](conf)
       userRepo = DoobieUserRepositoryInterpreter[F](xa)
       userValidation = UserValidationInterpreter[F](userRepo)
       userService = UserService[F](userRepo, userValidation)
@@ -78,13 +75,15 @@ object Server extends IOApp {
         ),
         "/feedback" -> routeAuth.liftService(FeedbackEndpoints[F, BCrypt, HMACSHA256](feedbackRepo)),
       ).orNotFound
-      _ <- Resource.liftF(DatabaseConfig.initializeDb(conf.db))
+      _ <- Resource.liftF(DatabaseConfig.initializeDb[F](conf.db))
       server <- BlazeServerBuilder[F]
         .bindHttp(conf.server.port, conf.server.host)
         .withHttpApp(httpApp)
         .resource
     } yield server
 
-  def run(args: List[String]): IO[ExitCode] =
-    createServer[IO].use(_ => IO.never).as(ExitCode.Success)
+  def run(args: List[String]): Task[ExitCode] = {
+
+    createServer[Task].use(_ => Task.never).as(ExitCode.Success)
+  }
 }
