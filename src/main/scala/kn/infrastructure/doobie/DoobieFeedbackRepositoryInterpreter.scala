@@ -65,7 +65,6 @@ class DoobieFeedbackRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](
   override def create(feedback: FeedbackWithIds): F[Unit] =
     insert(feedback)
       .withUniqueGeneratedKeys[Long]("id")
-      .map(id => feedback.copy(id = id.some)) // setting feedback id
       .transact(xa)
       .void
 
