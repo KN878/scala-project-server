@@ -77,7 +77,12 @@ object Server extends TaskApp {
         "/balance" -> routeAuth.liftService(
           TransactionEndpoints[F, BCrypt, HMACSHA256](transactionService),
         ),
-        "/feedback" -> routeAuth.liftService(FeedbackEndpoints[F, BCrypt, HMACSHA256](feedbackRepo)),
+        "/feedback" -> routeAuth.liftService(
+          FeedbackEndpoints[F, BCrypt, HMACSHA256](feedbackRepo),
+        ),
+        "secretCustomerActions" -> routeAuth.liftService(
+          ActionsEndpoints[F, BCrypt, HMACSHA256](actionsService)
+        ),
       ).orNotFound
     } yield httpApp
 
