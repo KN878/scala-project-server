@@ -1,6 +1,6 @@
 package kn
 
-import cats.Applicative
+import cats.data.Kleisli
 import cats.effect._
 import cats.implicits._
 import doobie.hikari.HikariTransactor
@@ -8,12 +8,14 @@ import doobie.util.ExecutionContexts
 import io.circe.config.parser
 import kn.config.{DatabaseConfig, MobileServerConfig}
 import kn.domain.authentication.Auth
+import kn.domain.secretShopper.actions.{ActionService, ActionValidationInterpreter}
 import kn.domain.shops.{ShopService, ShopValidationInterpreter}
 import kn.domain.transactions.{TransactionService, TransactionValidationInterpreter}
 import kn.domain.users.{User, UserService, UserValidationInterpreter}
-import kn.infrastructure.doobie.{DoobieAuthRepositoryInterpreter, DoobieFeedbackRepositoryInterpreter, DoobieShopRepositoryInterpreter, DoobieUserRepositoryInterpreter}
+import kn.infrastructure.doobie.{DoobieActionsRepositoryInterpreter, DoobieAuthRepositoryInterpreter, DoobieFeedbackRepositoryInterpreter, DoobieShopRepositoryInterpreter, DoobieUserRepositoryInterpreter}
 import kn.infrastructure.endpoint._
 import monix.eval.{Task, TaskApp}
+import org.http4s.{Request, Response}
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.{Router, Server => H4Server}
@@ -42,9 +44,8 @@ object Server extends TaskApp {
       routeAuth = SecuredRequestHandler(authenticator)
     } yield routeAuth
 
-  def createServer[F[_]: ContextShift: ConcurrentEffect: Timer]: Resource[F, H4Server[F]] =
+  def router[F[_]: Async: ContextShift](conf: MobileServerConfig): Resource[F, Kleisli[F, Request[F], Response[F]]] =
     for {
-      conf <- Resource.liftF(parser.decodePathF[F, MobileServerConfig]("mobileServer"))
       xa <- transactor[F](conf)
       userRepo = DoobieUserRepositoryInterpreter[F](xa)
       userValidation = UserValidationInterpreter[F](userRepo)
@@ -60,6 +61,9 @@ object Server extends TaskApp {
         userValidation,
       )
       feedbackRepo = DoobieFeedbackRepositoryInterpreter[F](xa)
+      actionsRepo = DoobieActionsRepositoryInterpreter[F](xa)
+      actionsValidation = ActionValidationInterpreter[F](actionsRepo, shopRepo)
+      actionsService = ActionService(actionsRepo, actionsValidation)
       routeAuth <- authenticator[F](xa, userRepo)
       httpApp = Router(
         "/users" -> {
@@ -75,14 +79,19 @@ object Server extends TaskApp {
         ),
         "/feedback" -> routeAuth.liftService(FeedbackEndpoints[F, BCrypt, HMACSHA256](feedbackRepo)),
       ).orNotFound
+    } yield httpApp
+
+  def createServer[F[_]: ContextShift: ConcurrentEffect: Timer]: Resource[F, H4Server[F]] =
+    for {
+      conf <- Resource.liftF(parser.decodePathF[F, MobileServerConfig]("mobileServer"))
       _ <- Resource.liftF(DatabaseConfig.initializeDb[F](conf.db))
+      httpApp <- router[F](conf)
       server <- BlazeServerBuilder[F]
         .bindHttp(conf.server.port, conf.server.host)
         .withHttpApp(httpApp)
         .resource
     } yield server
 
-  def run(args: List[String]): Task[ExitCode] = {
+  def run(args: List[String]): Task[ExitCode] =
     createServer[Task].use(_ => Task.never).as(ExitCode.Success)
-  }
 }
