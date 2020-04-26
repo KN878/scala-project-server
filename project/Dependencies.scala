@@ -7,8 +7,6 @@ object Dependencies {
     http4s.circe,
     http4s.dsl,
 
-    rho.core,
-
     tsec.common,
     tsec.password,
     tsec.mac,
@@ -49,11 +47,6 @@ object Dependencies {
     val client = "org.http4s" %% "http4s-blaze-server" % Http4sVersion
     val circe = "org.http4s" %% "http4s-circe" % Http4sVersion
     val dsl = "org.http4s" %% "http4s-dsl" % Http4sVersion
-  }
-
-  object rho {
-    val RhoVersion = "0.20.0"
-    val core = "org.http4s" %% "rho-swagger" % RhoVersion
   }
 
   object tsec {
