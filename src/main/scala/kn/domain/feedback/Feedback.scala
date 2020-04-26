@@ -2,6 +2,8 @@ package kn.domain.feedback
 
 import java.time.Instant
 
+import kn.domain.feedback.FeedbackType.FeedbackType
+
 case class FeedbackWithIds(
     id: Option[Long],
     shopId: Long,
@@ -10,6 +12,7 @@ case class FeedbackWithIds(
     cons: String,
     additionalInfo: Option[String],
     date: Instant,
+    feedbackType: FeedbackType,
 )
 
 case class CreateFeedbackRequest(

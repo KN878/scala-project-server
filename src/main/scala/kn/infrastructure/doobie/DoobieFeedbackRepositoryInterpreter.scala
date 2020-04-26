@@ -15,7 +15,7 @@ import kn.domain.feedback.{Feedback, FeedbackWithIds, FeedbackRepository}
 private object FeedbackSQL {
   def insert(feedback: FeedbackWithIds): Update0 =
     sql"""insert into feedback (shop_id, customer_id, type, pros, cons, additional_info, date)
-         values (${feedback.shopId}, ${feedback.customerId}, 'feedback', ${feedback.pros}, ${feedback.cons},
+         values (${feedback.shopId}, ${feedback.customerId}, ${feedback.feedbackType.toString}, ${feedback.pros}, ${feedback.cons},
          ${feedback.additionalInfo}, ${feedback.date})
          """.update
 
