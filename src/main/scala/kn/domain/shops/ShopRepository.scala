@@ -17,5 +17,7 @@ trait ShopRepository[F[_]] {
 
   def increaseBalance(shopId: Long, inc: Float): OptionT[F, Shop]
 
+  def decreaseBalance(shopId: Long, dec: Float): OptionT[F, Shop]
+
   def getShopByNameAndAddress(name: String, address: String): OptionT[F, Shop]
 }
