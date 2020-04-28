@@ -70,7 +70,7 @@ class TransactionEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F]
     val authShopOwner: AuthService[Auth, F] =
       Auth.shopOwnerOnly(transferToShopBalance(transactionService))
 
-    Auth.allRolesHandler(
+    Auth.allRolesWithFallThrough(
       increaseUserBalance(transactionService)
         .orElse(decreaseUserBalance(transactionService)),
     )(authShopOwner)

@@ -44,7 +44,7 @@ object Auth {
   )(implicit F: MonadError[F, Throwable]): TSecAuthService[User, AugmentedJWT[Auth, Long], F] =
     TSecAuthService.withAuthorization(_allRoles[F, AugmentedJWT[Auth, Long]])(pf)
 
-  def allRolesHandler[F[_], Auth](
+  def allRolesWithFallThrough[F[_], Auth](
       pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
   )(
       onNotAuthorized: TSecAuthService[User, AugmentedJWT[Auth, Long], F],
@@ -79,7 +79,7 @@ object Auth {
   ): BasicRBAC[F, Role, User, Auth] =
     BasicRBAC[F, Role, User, Auth](Role.Customer, Role.Admin)
 
-  def customerOnlyHandler[F[_], Auth](
+  def customerOnlyWithFallThrough[F[_], Auth](
       pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
   )(
       onNotAuthorized: TSecAuthService[User, AugmentedJWT[Auth, Long], F],
@@ -88,4 +88,9 @@ object Auth {
       pf,
       onNotAuthorized.run,
     )
+
+  def customerOnly[F[_], Auth](
+      pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
+  )(implicit F: MonadError[F, Throwable]): TSecAuthService[User, AugmentedJWT[Auth, Long], F] =
+    TSecAuthService.withAuthorization(_customerOnly[F, AugmentedJWT[Auth, Long]])(pf)
 }

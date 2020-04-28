@@ -93,7 +93,7 @@ class ShopEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
         .orElse(updateShopEndpoint(shopService))
     }
 
-    Auth.allRolesHandler(listShopsEndpoint(shopService)
+    Auth.allRolesWithFallThrough(listShopsEndpoint(shopService)
       .orElse(getShopEndpoint(shopService)))(authShopOwner)
   }
 }
