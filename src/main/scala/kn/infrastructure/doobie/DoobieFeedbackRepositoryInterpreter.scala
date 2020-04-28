@@ -1,8 +1,5 @@
 package kn.infrastructure.doobie
 
-import java.sql.Timestamp
-import java.time.Instant
-
 import cats.data.OptionT
 import cats.effect.Bracket
 import cats.implicits._
