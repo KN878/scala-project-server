@@ -1,4 +1,4 @@
-package kn.domain.secretShopper.actions
+package kn.domain.secretCustomer.actions
 
 import cats.data.OptionT
 
