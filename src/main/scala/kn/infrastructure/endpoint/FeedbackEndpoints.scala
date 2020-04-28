@@ -1,10 +1,7 @@
 package kn.infrastructure.endpoint
 
-import java.time.{Instant, ZoneId}
-
 import cats.effect.Sync
 import cats.implicits._
-import io.circe.Encoder
 import io.circe.generic.auto._
 import io.circe.syntax._
 import kn.domain.authentication.Auth
@@ -16,19 +13,18 @@ import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import tsec.authentication._
 import tsec.jwt.algorithms.JWTMacAlgo
+import kn.infrastructure.infrastructure._
 
 class FeedbackEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
   implicit val createFeedbackReqDecoder: EntityDecoder[F, CreateFeedbackRequest] = jsonOf
   implicit val feedbackDecoder: EntityDecoder[F, Feedback] = jsonOf
-  implicit val instantEncoder: Encoder[Instant] =
-    Encoder.encodeString.contramap[Instant](_.atZone(ZoneId.of("Europe/Moscow")).toString)
 
   private def createFeedbackEndpoint(feedbackRepo: FeedbackRepository[F]): AuthEndpoint[Auth, F] = {
     case req @ POST -> Root asAuthed user =>
       implicit val customerId: Long = user.id.getOrElse(0)
       for {
-        feedback <- req.request.as[CreateFeedbackRequest]
-        _ <- feedbackRepo.create(feedback)
+        createRequest <- req.request.as[CreateFeedbackRequest]
+        _ <- feedbackRepo.create(createRequest.toFeedback)
         response <- Created()
       } yield response
   }
@@ -75,12 +71,12 @@ class FeedbackEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       feedbackRepo: FeedbackRepository[F],
   ): AuthService[Auth, F] = {
     val authAdmin = Auth.adminOnly(deleteFeedbackEndpoint(feedbackRepo))
-    val authCustomer = Auth.customerOnlyHandler {
+    val authCustomer = Auth.customerOnlyWithFallThrough {
       createFeedbackEndpoint(feedbackRepo)
         .orElse(getFeedbackByCustomerEndpoint(feedbackRepo))
     }(authAdmin)
 
-    Auth.allRolesHandler {
+    Auth.allRolesWithFallThrough {
       getFeedbackEndpoint(feedbackRepo)
         .orElse(getFeedbackByShopEndpoint(feedbackRepo))
     }(authCustomer)
