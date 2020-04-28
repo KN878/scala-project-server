@@ -6,29 +6,23 @@ import cats.implicits._
 import kn.domain.shops.{Shop, ShopRepository}
 import kn.domain.users.{User, UserRepository, UserValidationAlgebra, UserValidationError}
 
-class TransactionService[F[_]](
+class TransactionService[F[_]: Monad](
                                 shopRepo: ShopRepository[F],
                                 userRepo: UserRepository[F],
                                 transactionValidation: TransactionValidationAlgebra[F],
                                 userValidation: UserValidationAlgebra[F],
 ) {
-  def increaseUserBalance(userId: Long, inc: Float)(
-      implicit M: Monad[F],
-  ): EitherT[F, UserValidationError, Option[User]] =
+  def increaseUserBalance(userId: Long, inc: Float): EitherT[F, UserValidationError, Option[User]] =
     userValidation
       .exists(userId.some)
       .semiflatMap(_ => userRepo.increaseBalance(userId, inc).value)
 
-  def decreaseUserBalance(userId: Long, dec: Float)(
-      implicit M: Monad[F],
-  ): EitherT[F, UserValidationError, Option[User]] =
+  def decreaseUserBalance(userId: Long, dec: Float): EitherT[F, UserValidationError, Option[User]] =
     userValidation
       .exists(userId.some)
       .semiflatMap(_ => userRepo.decreaseBalance(userId, dec).value)
 
-  def increaseShopBalance(shopId: Long, ownerId: Option[Long], amount: Float)(
-      implicit M: Monad[F],
-  ): EitherT[F, TransactionValidationError, Option[Shop]] = {
+  def increaseShopBalance(shopId: Long, ownerId: Option[Long], amount: Float): EitherT[F, TransactionValidationError, Option[Shop]] = {
     val validationRes = for {
       _ <- transactionValidation.ownsTheShop(shopId.some, ownerId)
       _ <- transactionValidation.ownerHasEnoughMoney(ownerId, amount)
@@ -42,6 +36,9 @@ class TransactionService[F[_]](
     }
   }
 
+  def decreaseShopBalance(shopId: Long, amount: Float): F[Unit] = {
+    shopRepo.decreaseBalance(shopId, amount).value.map(_=> ())
+  }
 }
 
 object TransactionService {
