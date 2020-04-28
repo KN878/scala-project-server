@@ -8,7 +8,7 @@ import doobie.util.update.Update
 import doobie.implicits._
 import doobie._
 import fs2.Stream
-import kn.domain.secretShopper.actions.{Action, ActionRepository}
+import kn.domain.secretCustomer.actions.{Action, ActionRepository}
 
 private object ActionsSQL {
   def insert(action: Action): Update0 =
