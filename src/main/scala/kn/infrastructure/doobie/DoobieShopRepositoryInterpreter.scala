@@ -81,6 +81,9 @@ class DoobieShopRepositoryInterpreter[F[_]: Bracket[*[_], Throwable]](val xa: Tr
 
   override def getShopByNameAndAddress(name: String, address: String): OptionT[F, Shop] =
     OptionT(selectByNameAndAddress(name, address).option.transact(xa))
+
+  override def decreaseBalance(shopId: Long, dec: Float): OptionT[F, Shop] =
+    get(shopId).flatMap(shop => update(shop.copy(balance = shop.balance - dec)))
 }
 
 object DoobieShopRepositoryInterpreter {
