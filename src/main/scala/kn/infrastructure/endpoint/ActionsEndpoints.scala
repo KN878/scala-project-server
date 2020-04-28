@@ -2,7 +2,7 @@ package kn.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
-import kn.domain.secretShopper.actions.{Action, ActionService}
+import kn.domain.secretCustomer.actions.{Action, ActionService}
 import org.http4s.{EntityDecoder, EntityEncoder}
 import org.http4s.dsl.Http4sDsl
 import tsec.jwt.algorithms.JWTMacAlgo
@@ -67,12 +67,13 @@ class ActionsEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F]{
   }
 
   def endpoints(actionsService: ActionService[F]): AuthService[Auth, F] =
-    Auth.shopOwnerOnly {
-      createActionsEndpoint(actionsService)
-        .orElse(updateShopActionsEndpoint(actionsService))
-        .orElse(deleteOneEndpoint(actionsService))
-        .orElse(deleteAllActionsEndpoint(actionsService))
-        .orElse(listShopActionsEndpoint(actionsService))
+    Auth.allRolesWithFallThrough(listShopActionsEndpoint(actionsService)) {
+      Auth.shopOwnerOnly {
+        createActionsEndpoint(actionsService)
+          .orElse(updateShopActionsEndpoint(actionsService))
+          .orElse(deleteOneEndpoint(actionsService))
+          .orElse(deleteAllActionsEndpoint(actionsService))
+      }
     }
 }
 

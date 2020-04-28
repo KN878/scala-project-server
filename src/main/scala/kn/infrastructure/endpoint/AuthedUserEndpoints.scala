@@ -76,7 +76,7 @@ class AuthedUserEndpoints[F[_]: Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] 
           .orElse(deleteUserEndpoint(userService))
       }
 
-    Auth.allRolesHandler(getMe)(authAdmin)
+    Auth.allRolesWithFallThrough(getMe)(authAdmin)
   }
 }
 
