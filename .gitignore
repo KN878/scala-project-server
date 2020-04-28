@@ -1,10 +1,23 @@
-# IntelliJ
-.idea/
-
-# Scala
+# sbt
+bin/
 target/
+build/
 
-# Other
+# intellij idea
+*.log
+*.iml
+*.ipr
+*.iws
+.idea
+
+# mac
 .DS_Store
-hidden.conf
-impl/
+
+# other?
+.history
+.scala_dependencies
+.cache
+.cache-main
+
+#general
+*.class
