@@ -1,7 +1,7 @@
 package kn.domain.users
 
 import cats.Applicative
-import io.circe.{Encoder, Json}
+import io.circe.{Decoder, Encoder, HCursor, Json}
 import tsec.authorization.AuthorizationInfo
 
 case class User(
@@ -36,4 +36,13 @@ object User {
       ("role", Json.fromString(a.role.roleRepr)),
     )
 
+  implicit val userDec: Decoder[User] = (c: HCursor) => for {
+    firstName <- c.downField("firstName").as[String]
+    lastName <- c.downField("lastName").as[String]
+    email <- c.downField("email").as[String]
+    phone <- c.downField("phone").as[Option[String]]
+    id <- c.downField("id").as[Option[Long]]
+    balance <- c.downField("balance").as[Float]
+    role <- c.downField("role").as[Role]
+  } yield new User(firstName, lastName, email, "", phone, id, balance, role)
 }
