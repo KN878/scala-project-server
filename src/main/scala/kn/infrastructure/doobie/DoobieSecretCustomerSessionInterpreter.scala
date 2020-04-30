@@ -12,7 +12,7 @@ import doobie.util.meta.Meta
 import doobie.util.query.Query0
 import kn.domain.secretCustomer.SessionStage.SessionStage
 
-private object SessionSQL {
+object SessionSQL {
   implicit val sessionStageMeta: Meta[SessionStage] = Meta[Int].timap(id => SessionStage(id))(stage => stage.id)
 
   def insert(session: Session): Update0 =
@@ -38,7 +38,7 @@ private object SessionSQL {
          """.update
 
   def getShopSessionsCount(shopId: Long): Query0[Int] =
-    sql"""select count(id)
+    sql"""select cast(count(id) as integer)
          from secretCustomerSessions
          where shop_id = $shopId and expires_at > now() and stage != ${SessionStage.Completed.id}""".query[Int]
 }

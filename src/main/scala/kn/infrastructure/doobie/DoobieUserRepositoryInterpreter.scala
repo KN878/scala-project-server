@@ -10,7 +10,7 @@ import kn.domain.users.{User, UserRepository}
 import kn.infrastructure.doobie.SQLPagination._
 import tsec.authentication.IdentityStore
 
-private object UserSQL {
+object UserSQL {
   def insert(user: User): Update0 = sql"""
     INSERT INTO USERS (FIRST_NAME, LAST_NAME, EMAIL, HASH, PHONE, ROLE)
     VALUES (${user.firstName}, ${user.lastName}, ${user.email}, ${user.hash}, ${user.phone}, ${user.role})

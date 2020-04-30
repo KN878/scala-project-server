@@ -10,7 +10,7 @@ import doobie._
 import fs2.Stream
 import kn.domain.secretCustomer.actions.{Action, ActionRepository}
 
-private object ActionsSQL {
+object ActionsSQL {
   def insert(action: Action): Update0 =
     sql"insert into actions (shop_id, action) values (${action.shopId}, ${action.action})".update
 

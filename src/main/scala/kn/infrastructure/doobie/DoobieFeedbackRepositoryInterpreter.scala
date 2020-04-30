@@ -9,7 +9,7 @@ import doobie.implicits.legacy.instant._
 import doobie.util.compat.FactoryCompat
 import kn.domain.feedback.{Feedback, FeedbackWithIds, FeedbackRepository}
 
-private object FeedbackSQL {
+object FeedbackSQL {
   def insert(feedback: FeedbackWithIds): Update0 =
     sql"""insert into feedback (shop_id, customer_id, type, pros, cons, additional_info, date)
          values (${feedback.shopId}, ${feedback.customerId}, ${feedback.feedbackType.toString}, ${feedback.pros}, ${feedback.cons},

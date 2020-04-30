@@ -9,7 +9,7 @@ import doobie.util.compat.FactoryCompat
 import kn.domain.shops.{Shop, ShopRepository}
 import kn.infrastructure.doobie.SQLPagination._
 
-private object ShopSQL {
+object ShopSQL {
   def insert(shop: Shop): Update0 = sql"""
         insert into shops (name, owner_id, balance, address)
         values (${shop.name}, ${shop.ownerId}, ${shop.balance}, ${shop.address})
