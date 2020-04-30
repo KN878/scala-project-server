@@ -13,3 +13,5 @@ Developed following Domain Driven Design principles and based on the Scala Pet S
 * Also, shop owner can create a "secret shopper" review for each of his shops, providing actions list for it. 
 * Shop owner can put some money on their account and then transact it to their shops balances.
 * If "secret shopper" is enabled for a shop and there is enough money on the shop balance, then customer can access this feature and gain a nominal fee for completing it. 
+
+<h4>Java 11 is required!<h4>
